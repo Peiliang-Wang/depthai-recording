@@ -1,5 +1,3 @@
-from config import *
-
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from multiprocessing import cpu_count
 from pathlib import Path
@@ -22,13 +20,13 @@ def clenCliLine(override: str = "", end: str = "\n", width: int = 90):
     print("\r" + override, end=end)
 
 
-def convertAll(processPaths: dict[Path, Path]):
+def convertAll(fps: int, processPaths: dict[Path, Path]):
   print("Converting to mp4...")
 
   if not checkCliExist("ffmpeg"):
     print("Can't find ffmpeg!")
   else:
-    convertErrors = multiprocessFiles(processPaths, convertToMp4)
+    convertErrors = multiprocessFiles(processPaths, fps, convertToMp4)
     if convertErrors:
       print("!Error: Complete conversion with error!\n")
       for file, error in convertErrors.items():
@@ -37,7 +35,7 @@ def convertAll(processPaths: dict[Path, Path]):
       print("Complete conversion!")
 
 
-def convertToMp4(inputPath: Path, outputPath: Path) -> str:
+def convertToMp4(fps: int, inputPath: Path, outputPath: Path) -> str:
   error = ""
   result = subprocess.run(
       f"ffmpeg -framerate {fps} -i {inputPath} -c copy -y {outputPath}",
@@ -48,7 +46,8 @@ def convertToMp4(inputPath: Path, outputPath: Path) -> str:
   return error
 
 
-def multiprocessFiles(processPaths: dict[Path, Path], fun) -> dict[Path, str]:
+def multiprocessFiles(processPaths: dict[Path, Path], fps,
+                      fun) -> dict[Path, str]:
   threadLimit = int(cpu_count() / 2)
   errorList: dict[Path, str] = {}
 
@@ -60,7 +59,7 @@ def multiprocessFiles(processPaths: dict[Path, Path], fun) -> dict[Path, str]:
     # Run subprocess
     for inputPath, outputPath in processPaths.items():
       try:
-        future = threadPool.submit(fun, inputPath, outputPath)
+        future = threadPool.submit(fun, fps, inputPath, outputPath)
         threadResult[future] = inputPath
       except Exception as e:
         errorList[inputPath] = str(e)
